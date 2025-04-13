@@ -1,6 +1,8 @@
 #include <cstdint>
+#include <iostream>
 #include <fstream>
 #include <string>
+#include <filesystem>
 
 const unsigned int START_ADDRESS = 0x200;
 
@@ -26,6 +28,8 @@ public:
             }
 
             delete[] buffer;
+        }else{
+            std::cout << "Can't read the file" << std::endl;
         }
     }
 
@@ -44,7 +48,8 @@ private:
 };
 
 int main(){
+    // std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
     Chip8 myChip;
-    myChip.LoadRom("./Clock Program [Bill Fisher, 1981].ch8");
+    myChip.LoadRom("../../Clock_Program_[Bill_Fisher_1981].ch8");
     return 0;
 }
