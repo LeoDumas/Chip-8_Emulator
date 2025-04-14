@@ -2,15 +2,48 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <filesystem>
+#include <cstring>
 
-const unsigned int START_ADDRESS = 0x200;
+
+const unsigned int START_ADDRESS = 0x200; // Start at this location because the first 512 bytes, from 0x000 to 0x1FF, are where the original interpreter was located, and should not be used by programs.
+// We can also use START_ADDRESS = 0x600 for some programs that are intended for the ETI 660 computer
+// Found here : http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.1
+
+// Characters declaration
+const unsigned int CHAR_SIZE = 80; // 80 correspond to the number of element in the charset (0xF0, 0x90,...)
+
+// Based on http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.3
+uint8_t charset[CHAR_SIZE] = {
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+};
+const unsigned int CHAR_START_ADDRESS = 0X50;
 
 class Chip8 {
 public:
     Chip8()
         // Constructor
         : index(0), PC(START_ADDRESS), SP(0), delayTimer(0), soundTimer(0), opcode(0){}
+
+    void LoadCharSet(){
+        for (unsigned int i = 0; i < CHAR_SIZE; ++i){
+            memory[CHAR_START_ADDRESS + i] = charset[i];
+        }
+    }
 
     void LoadRom(const std::string &fileName) {
         std::ifstream file(fileName, std::ios::binary | std::ios::ate);
@@ -32,6 +65,20 @@ public:
             std::cout << "Can't read the file" << std::endl;
         }
     }
+    // Instructions definition
+    // All based on http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#3.1
+
+    // CLS
+    void OP_00E0(){
+        memset(video, 0, sizeof(video));
+    }
+
+    // RET
+    void OP_00EE(){
+        --SP;
+        PC = stack[SP];
+    }
+
 
 private:
     uint32_t video[64 * 32]{};
@@ -48,8 +95,8 @@ private:
 };
 
 int main(){
-    // std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
     Chip8 myChip;
+    myChip.LoadCharSet();
     myChip.LoadRom("../../Clock_Program_[Bill_Fisher_1981].ch8");
     return 0;
 }
