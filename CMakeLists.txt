@@ -6,7 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(chip_8_emulator main.cpp
-    ressources.md)
+    ressources.md
+    README.md)
 
 include(GNUInstallDirs)
 install(TARGETS chip_8_emulator
