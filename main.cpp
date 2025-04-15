@@ -79,6 +79,99 @@ public:
         PC = stack[SP];
     }
 
+    // JP addr
+    void OP_1nnn(){
+        uint16_t addr = opcode & 0x0FFFu; // Extracts the 12-bit address (nnn) from a 16-bit opcode
+        PC = addr;
+    }
+
+    // CALL addr
+    void OP_2nnn(){
+        uint16_t addr = opcode & 0x0FFFu; // Extract nnn from opcode
+        stack[SP] = PC;
+        ++SP;
+        PC = addr;
+    }
+
+    // SE Vx, byte
+    void OP_3xkk(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u; // Extract Vx from opcode (bit 8 to 11)
+        uint8_t byte = (opcode & 0x00FFu); // Extract kk (byte) from opcode (bit 0 to 7)
+
+        // The interpreter compares register Vx to kk
+        if(registers[Vx] == byte){
+            PC += 2;
+        }
+    }
+
+    // SNE Vx, byte
+    void OP_4xkk(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u; // Extract Vx from opcode (bit 8 to 11) and move it's bit to the right 8 times for comparison
+        uint8_t byte = (opcode & 0x00FFu); // Extract kk (byte) from opcode (bit 0 to 7)
+
+        if(registers[Vx] != byte){
+            PC += 2;
+        }
+    }
+
+    // SE Vx, Vy
+    void OP_5xy0(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u; // Vx bit 8 to 11
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u; // Vy bit 4 to 7
+
+        if(registers[Vx] == registers[Vy]){
+            PC += 2;
+        }
+    }
+
+    // LD Vx, byte
+    void OP_6xkk(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t byte = (opcode & 0x00FFu);
+
+        registers[Vx] = byte;
+    }
+
+    // ADD Vx, byte
+    void OP_7xkk(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t byte = (opcode & 0x00FFu);
+
+        registers[Vx] = (registers[Vx] + byte);
+    }
+
+    // LD Vx, Vy
+    void OP_8xy0(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
+        registers[Vx] = registers[Vy];
+    }
+
+    // OR Vx, Vy
+    void OP_8xy1(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
+        registers[Vx] = (registers[Vx] | registers[Vy]);
+    }
+
+    // AND Vx, Vy
+    void OP_8xy2(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
+        registers[Vx] = (registers[Vx] & registers[Vy]);
+    }
+
+    // XOR Vx, Vy
+    void OP_8xy3(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
+        registers[Vx] = (registers[Vx] ^ registers[Vy]);
+    }
+
 
 private:
     uint32_t video[64 * 32]{};
