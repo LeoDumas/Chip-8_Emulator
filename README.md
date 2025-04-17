@@ -30,6 +30,10 @@ The goal of this project is to provide a foundation for emulating and experiment
   - `OR Vx, Vy` (0x8xy1)
   - `AND Vx, Vy` (0x8xy2)
   - `XOR Vx, Vy` (0x8xy3)
+  - `ADD Vx, Vy` (0x8xy4)
+  - `SUB Vx, Vy` (0x8xy5)
+  - `SHR Vx {, Vy}` (0x8xy6)
+  
 - **Stack**: Utilizes a 16-level stack for subroutine calls.
 
 ## Prerequisites
