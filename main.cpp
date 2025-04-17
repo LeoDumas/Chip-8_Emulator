@@ -172,6 +172,38 @@ public:
         registers[Vx] = (registers[Vx] ^ registers[Vy]);
     }
 
+    // ADD Vx, Vy
+    void OP_8xy4(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+        // Vf = 0xF
+
+        uint16_t res = ((registers[Vx] + registers[Vy]));
+
+        (res > 0x00FFu) ? registers[0xF] = 1 : registers[0xF] = 0;
+
+        registers[Vx] = (static_cast<uint8_t>(res));
+    }
+
+    // SUB Vx, Vy
+    void OP_8xy5(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+        // Vf = 0xF
+
+        registers[0xF] = ((registers[Vx] > registers[Vy]) ? registers[0xF] = 1 : registers[0xF] = 0);
+        registers[Vx] = static_cast<uint8_t>(registers[Vx] - registers[Vy]);
+    }
+
+    // SHR Vx {, Vy}
+    void OP_8xy6(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        // If LSB[Vx] = 1 -> Vf = 1 and if LSB[Vx] = 0 -> Vf = 0
+        // Thus Vf = LSB[Vx]
+        registers[0xF] = (registers[Vx] & 0x1u);
+        registers[Vx] = registers[Vx] >> 1u;
+    }
+
 
 private:
     uint32_t video[64 * 32]{};
