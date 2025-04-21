@@ -342,7 +342,7 @@ public:
     // ADD I, Vx
     void OP_Fx1E(){
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
-        index &= registers[Vx];
+        index += registers[Vx];
     }
 
     // LD F, Vx
