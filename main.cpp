@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <iostream>
 #include <fstream>
+#include <random>
 #include <string>
 #include <cstring>
 
@@ -65,6 +66,14 @@ public:
             std::cout << "Can't read the file" << std::endl;
         }
     }
+
+    // By default from 0 to 255
+    uint8_t RNG(){
+        static std::mt19937 gen{ std::random_device{}() };
+        static std::uniform_int_distribution<uint8_t> dist(0,255);
+        return dist(gen);
+    }
+
     // Instructions definition
     // All based on http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#3.1
 
@@ -137,7 +146,7 @@ public:
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t byte = (opcode & 0x00FFu);
 
-        registers[Vx] = (registers[Vx] + byte);
+        registers[Vx] += byte;
     }
 
     // LD Vx, Vy
@@ -153,7 +162,7 @@ public:
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t Vy = (opcode & 0x00F0u) >> 4u;
 
-        registers[Vx] = (registers[Vx] | registers[Vy]);
+        registers[Vx] |= registers[Vy];
     }
 
     // AND Vx, Vy
@@ -161,7 +170,7 @@ public:
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t Vy = (opcode & 0x00F0u) >> 4u;
 
-        registers[Vx] = (registers[Vx] & registers[Vy]);
+        registers[Vx] &= registers[Vy];
     }
 
     // XOR Vx, Vy
@@ -169,7 +178,7 @@ public:
         uint8_t Vx = (opcode & 0x0F00u) >> 8u;
         uint8_t Vy = (opcode & 0x00F0u) >> 4u;
 
-        registers[Vx] = (registers[Vx] ^ registers[Vy]);
+        registers[Vx] ^= registers[Vy];
     }
 
     // ADD Vx, Vy
@@ -204,9 +213,84 @@ public:
         registers[Vx] = registers[Vx] >> 1u;
     }
 
+    // SUBN Vx, Vy
+    void OP_8xy7(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
+        registers[0xF] = (registers[Vy] > registers[Vx] ? 1 : 0);
+        registers[Vx] -= registers[Vy];
+    }
+
+    // SHL Vx {, Vy}
+    void OP_8xyE(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        registers[0xF] = (registers[Vx] & 0x1u);
+        registers[Vx] = registers[Vx] << 1u;
+    }
+
+    // SNE Vx, Vy
+    void OP_9xy0(){
+        uint8_t Vx = (opcode & 0X0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0X00F0u) >> 4u;
+
+        PC += (registers[Vx] != registers[Vy] && 2);
+    }
+
+    // LD I, addr ; I = index; addr = nnn
+    void OP_Annn(){
+        //                              addr or nnn
+        index = static_cast<uint16_t>(opcode & 0x0FFFu);
+    }
+
+    //JP V0, addr
+    void OP_Bnnn(){
+        //                          addr or nnn         V0
+        PC = static_cast<uint16_t>((opcode & 0x0FFFu)+registers[0]);
+    }
+
+    // RND Vx, byte
+    // rand number 0 -> 255
+    void OP_Cxkk(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t byte = (opcode & 0x00FFu);
+
+        registers[Vx] = (byte & RNG());
+    }
+
+    // DRW Vx, Vy, nibble
+    void OP_Dxyn(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+        uint8_t nibble = (opcode & 0x000Fu);
+
+        uint8_t coordX = registers[Vx] % VIDEO_WIDTH;
+        uint8_t coordY = registers[Vy] % VIDEO_HEIGHT;
+        registers[0xF] = 0;
+
+        for(uint8_t row = 0; row < nibble; ++row){
+            uint8_t spriteByte = memory[index + row];
+            for(uint8_t bit = 0; bit < 8u; ++bit){
+                uint8_t pixelBit = (spriteByte >> (7 - bit)) & 1;
+                uint16_t x = (coordX + bit) % VIDEO_WIDTH;
+                uint16_t y = (coordY + row) % VIDEO_HEIGHT;
+                uint32_t &screenPixel = video[y * VIDEO_WIDTH + x];
+
+                if (pixelBit) {
+                    if (screenPixel == 1) {
+                        registers[0xF] = 1; // collision détectée
+                    }
+                    screenPixel ^= 1;
+                }
+            }
+        }
+    }
+
 
 private:
-    uint32_t video[64 * 32]{};
+    static constexpr uint8_t VIDEO_WIDTH = 64;
+    static constexpr uint8_t VIDEO_HEIGHT = 32;
+    uint32_t video[VIDEO_WIDTH * VIDEO_HEIGHT]{};
     uint8_t keypad[16]{};
     uint8_t registers[16]{};
     uint8_t memory[4096]{};
