@@ -286,6 +286,103 @@ public:
         }
     }
 
+    // SKP Vx
+    void OP_Ex9E(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vx_key = registers[Vx];
+        if(keypad[Vx_key]){
+            PC += 2;
+        }
+    }
+
+    // SKNP Vx
+    void OP_ExA1(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t Vx_key = registers[Vx];
+        if(!keypad[Vx_key]){
+            PC += 2;
+        }
+    }
+
+    // LD Vx, DT
+    void OP_Fx07(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        registers[Vx] = delayTimer;
+    }
+
+    // LD Vx, K
+    void OP_Fx0A(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        bool keyPressed = false;
+
+        for(int i = 0; i < 16; ++i){
+            if(keypad[i]){
+                registers[Vx] = i;
+                keyPressed = true;
+                break;
+            }
+        }
+        if (!keyPressed){
+            PC -= 2;
+        }
+    }
+
+    // LD DT, Vx
+    void OP_Fx15(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        delayTimer = registers[Vx];
+    }
+
+    // LD ST, Vx
+    void OP_Fx18(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        soundTimer = registers[Vx];
+    }
+
+    // ADD I, Vx
+    void OP_Fx1E(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        index &= registers[Vx];
+    }
+
+    // LD F, Vx
+    void OP_Fx29(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+                                    // Sprites are 5 bytes long
+        index = CHAR_START_ADDRESS + (5 * registers[Vx]);
+    }
+
+    // LD B, Vx
+    void OP_Fx33(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        uint8_t val = registers[Vx];
+
+        memory[index + 2] = val % 10;
+        val /= 10;
+
+        memory[index + 1] = val % 10;
+        val /= 10;
+
+        memory[index] = val % 10;
+    }
+
+    // LD [I], Vx
+    void OP_Fx55(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+        for (uint8_t i = 0; i <= Vx; ++i){
+            memory[index + i] = registers[i];
+        }
+    }
+
+    // LD Vx, [I]
+    void OP_Fx65(){
+        uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+
+        for (uint8_t i = 0; i <= Vx; ++i){
+            registers[i] = memory[index + i];
+        }
+
+    }
 
 private:
     static constexpr uint8_t VIDEO_WIDTH = 64;
