@@ -35,10 +35,89 @@ uint8_t charset[CHAR_SIZE] = {
 const unsigned int CHAR_START_ADDRESS = 0X50;
 
 class Chip8 {
+    using OpHandler = void (Chip8::*)();
+
+    static constexpr uint8_t VIDEO_WIDTH = 64;
+    static constexpr uint8_t VIDEO_HEIGHT = 32;
+    uint32_t video[VIDEO_WIDTH * VIDEO_HEIGHT]{};
+    uint8_t keypad[16]{};
+    uint8_t registers[16]{};
+    uint8_t memory[4096]{};
+    uint16_t index;
+    uint16_t PC;
+    uint8_t SP;
+    uint16_t stack[16]{};
+    uint8_t delayTimer;
+    uint8_t soundTimer;
+    uint16_t opcode;
+
+    // First entries from 0x0 to 0xF
+    OpHandler primary[16];
+
+    // Opcode that need sub-decoding not only their first digit
+    OpHandler table0[16];
+    OpHandler table8[16];
+    OpHandler tableE[16];
+    OpHandler tableF[16];
+
 public:
     Chip8()
         // Constructor
-        : index(0), PC(START_ADDRESS), SP(0), delayTimer(0), soundTimer(0), opcode(0){}
+        : index(0), PC(START_ADDRESS), SP(0), delayTimer(0), soundTimer(0), opcode(0){
+
+        // primary
+        primary[0x0] = &Chip8::decode_0xxx;
+        primary[0x1] = &Chip8::OP_1nnn;
+        primary[0x2] = &Chip8::OP_2nnn;
+        primary[0x3] = &Chip8::OP_3xkk;
+        primary[0x4] = &Chip8::OP_4xkk;
+        primary[0x5] = &Chip8::OP_5xy0;
+        primary[0x6] = &Chip8::OP_6xkk;
+        primary[0x7] = &Chip8::OP_7xkk;
+        primary[0x8] = &Chip8::decode_8xxx;
+        primary[0x9] = &Chip8::OP_9xy0;
+        primary[0xA] = &Chip8::OP_Annn;
+        primary[0xB] = &Chip8::OP_Bnnn;
+        primary[0xC] = &Chip8::OP_Cxkk;
+        primary[0xD] = &Chip8::OP_Dxyn;
+        primary[0xE] = &Chip8::decode_Exxx;
+        primary[0xF] = &Chip8::decode_Fxxx;
+
+        // table0
+        table0[0x0] = &Chip8::OP_00E0;
+        table0[0xE] = &Chip8::OP_00EE;
+
+        // 0x8 family
+        table8[0x0] = &Chip8::OP_8xy0;
+        table8[0x1] = &Chip8::OP_8xy1;
+        table8[0x2] = &Chip8::OP_8xy2;
+        table8[0x3] = &Chip8::OP_8xy3;
+        table8[0x4] = &Chip8::OP_8xy4;
+        table8[0x5] = &Chip8::OP_8xy5;
+        table8[0x6] = &Chip8::OP_8xy6;
+        table8[0x7] = &Chip8::OP_8xy7;
+        table8[0xE] = &Chip8::OP_8xyE;
+
+        // 0xE family
+        tableE[0x9] = &Chip8::OP_Ex9E;
+        tableE[0xA] = &Chip8::OP_ExA1;
+
+        // 0xF family
+        tableF[0x07] = &Chip8::OP_Fx07;
+        tableF[0x0A] = &Chip8::OP_Fx0A;
+        tableF[0x15] = &Chip8::OP_Fx15;
+        tableF[0x18] = &Chip8::OP_Fx18;
+        tableF[0x1E] = &Chip8::OP_Fx1E;
+        tableF[0x29] = &Chip8::OP_Fx29;
+        tableF[0x33] = &Chip8::OP_Fx33;
+        tableF[0x55] = &Chip8::OP_Fx55;
+        tableF[0x65] = &Chip8::OP_Fx65;
+    }
+
+    inline void decode_0xxx() { (this->*table0[ opcode & 0x000Fu ])();}
+    inline void decode_8xxx() { (this->*table8[ opcode & 0x000Fu ])();}
+    inline void decode_Exxx() { (this->*tableE[ opcode & 0x00F0u ])();}
+    inline void decode_Fxxx() { (this->*tableF[ opcode & 0x00FFu ])();}
 
     void LoadCharSet(){
         for (unsigned int i = 0; i < CHAR_SIZE; ++i){
@@ -381,23 +460,32 @@ public:
         for (uint8_t i = 0; i <= Vx; ++i){
             registers[i] = memory[index + i];
         }
+    }
+
+    void Cycle(){
+        // Fetch
+        opcode = (memory[PC] << 9u | memory[PC + 1]);
+
+        // Instruction are 2 bytes long, we need to move the PC forward by 2 for the next opcode
+        PC += 2;
+
+        // Decode and execute
+        (this->*(primary[(opcode & 0xF000u) >> 12u]))();
+
+        // Decrement the delay timer if it's been set
+        if (delayTimer > 0)
+        {
+            --delayTimer;
+        }
+
+        // Decrement the sound timer if it's been set
+        if (soundTimer > 0)
+        {
+            --soundTimer;
+        }
 
     }
 
-private:
-    static constexpr uint8_t VIDEO_WIDTH = 64;
-    static constexpr uint8_t VIDEO_HEIGHT = 32;
-    uint32_t video[VIDEO_WIDTH * VIDEO_HEIGHT]{};
-    uint8_t keypad[16]{};
-    uint8_t registers[16]{};
-    uint8_t memory[4096]{};
-    uint16_t index;
-    uint16_t PC;
-    uint8_t SP;
-    uint16_t stack[16]{};
-    uint8_t delayTimer;
-    uint8_t soundTimer;
-    uint16_t opcode;
 };
 
 int main(){
