@@ -1,0 +1,77 @@
+name: CMake cross-platform CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+            artifact_name: chip8-emulator-windows
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+            artifact_name: chip8-emulator-linux-gcc
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+            artifact_name: chip8-emulator-linux-clang
+          - os: macos-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+            artifact_name: chip8-emulator-macos
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install SDL2 on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev
+
+      - name: Install SDL2 on Windows
+        if: matrix.os == 'windows-latest'
+        run: choco install sdl2 --yes
+
+      - name: Install SDL2 on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install sdl2
+
+      - name: Configure with CMake
+        env:
+          BUILD_DIR: ${{ github.workspace }}/build
+        run: |
+          cmake -B "$BUILD_DIR" \
+            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -S ${{ github.workspace }}
+
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build --config Release
+
+      - name: Run Tests
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --build-config Release --output-on-failure
+
+      - name: Upload Executable
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            ${{ github.workspace }}/build/Release/chip8_emulator*
+            ${{ github.workspace }}/build/chip8_emulator*
