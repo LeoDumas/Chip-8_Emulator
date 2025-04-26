@@ -1,131 +1,158 @@
-# Chip-8 Emulator
+# CHIP-8 Emulator
 
-A simple Chip-8 emulator written in C++.
+A simple, SDL2‑powered Chip-8 emulator written in C++.
 
-## Description
+⚠️ Not all programs works for the moments. (Games doesn't work)
 
-This project demonstrates a minimal Chip-8 emulator. It includes:
+---
 
-- Loading a character set (the built-in font sprites for digits and letters).
-- Loading ROM files (`.ch8`) from disk into memory.
-- A random number generator (`RNG()`).
-- Core opcode implementations.
-- A 16-level stack for subroutine calls.
+## Table of Contents
 
-The goal of this project is to provide a foundation for emulating and experimenting with classic Chip-8 games and demos and to understand how emulation works for future projects.
+- [CHIP-8 Emulator](#chip-8-emulator)
+  - [Table of Contents](#table-of-contents)
+  - [Project Overview](#project-overview)
+  - [Features](#features)
+  - [Prerequisites](#prerequisites)
+  - [Building](#building)
+    - [Using CMake (recommended)](#using-cmake-recommended)
+    - [Direct compilation (single file)](#direct-compilation-single-file)
+  - [Usage](#usage)
+  - [Programs / ROMs](#programs--roms)
+  - [Memory Layout](#memory-layout)
+  - [Project Structure](#project-structure)
+
+---
+
+## Project Overview
+
+This emulator implements the classic Chip-8, allowing you to load and run `.ch8` ROMs using SDL2 for graphics and input. It demonstrates:
+
+[video_demo](https://github.com/user-attachments/assets/35eb31d3-71a1-4da8-b64c-5d73f72dd290)
+
+- **Opcode decoding and execution** for the full Chip-8 instruction set.
+- **Graphics rendering** at 64×32 pixels, scaled to any window size.
+- **Keyboard input mapping** between modern keyboards and the 16-key Chip‑8 keypad.
+- **Timers** and **sound** emulation (via decrementing timers).
+
+---
 
 ## Features
 
-- **LoadCharSet**: Loads the 16 built-in Chip-8 characters into memory at address `0x50`.
-- **LoadRom**: Loads a `.ch8` file into memory at the default `START_ADDRESS` (`0x200`).
-- **RNG**: Generates a uniform random byte (0–255) for the `RND Vx, byte` instruction.
-- **Stack**: 16-level stack for subroutine calls and returns.
-- **Implemented Opcodes**:
-  - `00E0` (CLS)
-  - `00EE` (RET)
-  - `1nnn` (JP addr)
-  - `2nnn` (CALL addr)
-  - `3xkk` (SE Vx, byte)
-  - `4xkk` (SNE Vx, byte)
-  - `5xy0` (SE Vx, Vy)
-  - `6xkk` (LD Vx, byte)
-  - `7xkk` (ADD Vx, byte)
-  - `8xy0` (LD Vx, Vy)
-  - `8xy1` (OR Vx, Vy)
-  - `8xy2` (AND Vx, Vy)
-  - `8xy3` (XOR Vx, Vy)
-  - `8xy4` (ADD Vx, Vy)
-  - `8xy5` (SUB Vx, Vy)
-  - `8xy6` (SHR Vx)
-  - `8xy7` (SUBN Vx, Vy)
-  - `8xyE` (SHL Vx)
-  - `9xy0` (SNE Vx, Vy)
-  - `Annn` (LD I, addr)
-  - `Bnnn` (JP V0, addr)
-  - `Cxkk` (RND Vx, byte)
-  - `Dxyn` (DRW Vx, Vy, nibble)
-  - `Ex9E` (SKP Vx)
-  - `ExA1` (SKNP Vx)
-  - `Fx07` (LD Vx, DT)
-  - `Fx0A` (LD Vx, K)
-  - `Fx15` (LD DT, Vx)
-  - `Fx18` (LD ST, Vx)
-  - `Fx1E` (ADD I, Vx)
-  - `Fx29` (LD F, Vx)
-  - `Fx33` (LD B, Vx)
-  - `Fx55` (LD [I], Vx)
-  - `Fx65` (LD Vx, [I])
+- **Full opcode support**:
+  - Display: `00E0`, `Dxyn`
+  - Flow control: `1nnn`, `2nnn`, `00EE`
+  - Conditional skips: `3xkk`, `4xkk`, `5xy0`, `9xy0`, `Ex9E`, `ExA1`
+  - Registers and math: `6xkk`, `7xkk`, `8xy0`–`8xyE`
+  - Index register: `Annn`, `Fx1E`
+  - I/O: `Fx07`, `Fx0A`, `Fx15`, `Fx18`, `Fx29`, `Fx33`, `Fx55`, `Fx65`
+  - Random: `Cxkk`
+- **Fontset loading** at address `0x50` for hexadecimal characters (0–F).
+- **Configurable start address** (`0x200` by default, `0x600` optional for ETI 660 programs).
+- **16-level stack** for subroutines.
+- **SDL2** integration for window, rendering, and event handling.
+- **Command-line options** for pixel scaling and cycle delay.
+
+---
 
 ## Prerequisites
 
-- A C++ compiler that supports C++17 or later (e.g., `g++` or `clang++`).
-- CMake (optional, to use the provided `CMakeLists.txt`).
+- **C++17** compiler (e.g., `g++`, `clang++`)
+- **SDL2** development libraries
+- **CMake** (optional)
 
-## Getting Started
+On Debian/Ubuntu:
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/LeoDumas/Chip-8_Emulator.git
-   cd Chip-8_Emulator
-   ```
+```bash
+sudo apt-get update && \
+  sudo apt-get install build-essential libsdl2-dev cmake
+```
 
-2. **Build**
-   - **Using CMake**:
-     ```bash
-     mkdir build && cd build
-     cmake ..
-     make
-     ```
-   - **Direct Compilation**:
-     ```bash
-     g++ -std=c++17 main.cpp -o chip8_emulator
-     ```
+---
 
-3. **Run**
-   ```bash
-   ./chip8_emulator
-   ```
+## Building
 
-## ROMs
+### Using CMake (recommended)
 
-In the sample code, the `Clock_Program_[Bill_Fisher_1981].ch8` file is loaded by default.
+```bash
+git clone https://github.com/LeoDumas/Chip-8_Emulator.git
+cd Chip-8_Emulator
+mkdir build && cd build
+cmake ..
+make
+```
 
-> This ROM collection is from [kripod/chip8-roms](https://github.com/kripod/chip8-roms).
+### Direct compilation (single file)
 
-Feel free to place other Chip-8 ROM files in the project’s folder (or any directory) and load them via `LoadRom()`.
+```bash
+g++ -std=c++17 main.cpp -lSDL2 -O2 -o chip8_emulator
+```
+
+---
+
+## Usage
+
+```bash
+./chip8_emulator <Scale> <Delay(ms)> <ROM_PATH>
+```
+
+- `<Scale>`: Integer scaling factor for the 64×32 display (e.g., `10` for 640×320 window).
+- `<Delay(ms)>`: Minimum milliseconds per emulation cycle (e.g., `2` for ~500 cycles/second).
+- `<ROM_PATH>`: Path to the `.ch8` ROM file.
+
+**Example:**
+
+```bash
+./build/Desktop-Debug/chip_8_emulator 10 1 ./programs/Keypad_Test_\[Hap_2006\].ch8
+```
+
+Press **Escape** or close the window to quit.
+
+Key mapping:
+```
+1 2 3 C    → Chip-8 1 2 3 C
+4 5 6 D    → Chip-8 4 5 6 D
+7 8 9 E    → Chip-8 7 8 9 E
+A 0 B F    → Chip-8 A 0 B F
+Mapping uses keys: X,1,2,3,A,Z,E,Q,S,D,W,C,4,R,F,V (azerty)
+```
+
+---
+
+## Programs / ROMs
+
+Contains a small collection of test ROMs in the `programs/` folder:
+
+[https://github.com/kripod/chip8-roms/tree/master](https://github.com/kripod/chip8-roms/tree/master)
+
+- `15_Puzzle_[Roger_Ivie].ch8`
+- `Airplane.ch8`
+- `Clock_Program_[Bill_Fisher_1981].ch8`
+- `Fishie_[Hap_2005].ch8`
+- `Keypad_Test_[Hap_2006].ch8`
+- `Maze_[David_Winter_199x].ch8`
+- `Stars_[Sergey_Naydenov_2010].ch8`
+
+---
 
 ## Memory Layout
 
-- **Start Address** (`0x200`): Default load address for most Chip-8 programs.
-- **Alternate Start** (`0x600`): Some ETI 660 programs expect to begin at `0x600`.
-- **Fontset Address** (`0x50`): Where the 80-byte fontset is loaded.
+- **Fontset**: loaded at `0x50`, size 80 bytes
+- **Program start**: default `0x200` (first 512 bytes reserved)
+- **Alternate start**: `0x600` for ETI 660 compatibility
 
-## Missing Functions (To Be Implemented)
-
-Those are the missing functions to be added in the main loop:
-
-- **`EmulateCycle()`**
-
-- **`UpdateTimers()`**
-  - Decrement `delayTimer` and `soundTimer` at a 60 Hz rate (if non-zero).
-
-- **`DrawGraphics()`**
-  - Render the `video[]` to the screen, with SDL2.
-
-- **`HandleInput()`**
-  - Update the `keypad[16]` array based on host computer.
-
-- **`main()`**
-  - Main loop function
+---
 
 ## Project Structure
 
-```plaintext
+```
 .
-├── CMakeLists.txt        # CMake build configuration
-├── Clock_Program_[Bill_Fisher_1981].ch8
-├── main.cpp              # Entry point; currently only loads charset and ROM
-├── Chip8.cpp/.hpp       # (not present) Move your class implementation here
-├── resources.md          # Additional documentation or notes
-└── README.md             # This file
+├── .vscode/               # VSCode workspace settings
+├── build/                 # CMake build directory
+├── programs/              # Sample Chip-8 ROM files
+│   ├── *.ch8
+│   └── …
+├── CMakeLists.txt         # Build configuration
+├── main.cpp               # Emulator implementation
+├── README.md              # This file
+└── ressources.md          # Additional notes
 ```
